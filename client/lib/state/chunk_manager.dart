@@ -20,13 +20,17 @@ class ChunkCoord {
   String toString() => 'Chunk($x, $y)';
 }
 
-/// A city within a chunk.
+/// A city within a chunk - sits on a grid intersection.
 class City {
-  final double localX; // 0.0 - 1.0 within chunk
-  final double localY;
+  final int gridX; // 0 to chunkSize-1 (grid cell index)
+  final int gridY;
   final int seed;
 
-  const City(this.localX, this.localY, this.seed);
+  const City(this.gridX, this.gridY, this.seed);
+  
+  /// Get normalized position within chunk (0.0-1.0)
+  double get localX => gridX / ChunkManager.chunkSize;
+  double get localY => gridY / ChunkManager.chunkSize;
 }
 
 /// Data for a single chunk.
@@ -102,14 +106,22 @@ class ChunkManager {
     final rng = Random(chunkSeed);
 
     final cities = <City>[];
+    final usedPositions = <int>{}; // Track used grid positions
     final numCells = chunkSize * chunkSize;
     final expectedCities = (numCells * cityDensity).round();
 
     for (int i = 0; i < expectedCities; i++) {
-      final localX = rng.nextDouble();
-      final localY = rng.nextDouble();
+      // Generate random grid position
+      final gridX = rng.nextInt(chunkSize);
+      final gridY = rng.nextInt(chunkSize);
+      final posKey = gridY * chunkSize + gridX;
+      
+      // Skip if position already used
+      if (usedPositions.contains(posKey)) continue;
+      usedPositions.add(posKey);
+      
       final citySeed = rng.nextInt(1 << 30);
-      cities.add(City(localX, localY, citySeed));
+      cities.add(City(gridX, gridY, citySeed));
     }
 
     return ChunkData(coord, cities);
