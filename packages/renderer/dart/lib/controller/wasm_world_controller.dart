@@ -64,13 +64,6 @@ class WasmWorldController {
     js_util.callMethod(_renderer, 'set_camera', [x, y, zoom]);
   }
   
-  /// Handle click - returns CityInfo if hit
-  CityInfo? click(double x, double y) {
-    final result = js_util.callMethod(_renderer, 'click', [x, y]);
-    if (result == null) return null;
-    return CityInfo.fromJs(result);
-  }
-  
   /// Get render stats
   RenderStats getStats() {
     final result = js_util.callMethod(_renderer, 'get_stats', []);

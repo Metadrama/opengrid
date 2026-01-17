@@ -9,15 +9,11 @@ import '../controller/wasm_world_controller.dart';
 class WasmWorldView extends StatefulWidget {
   final int worldSeed;
   final void Function(WasmWorldController)? onReady;
-  final void Function(CityInfo)? onCitySelected;
-  final void Function()? onSelectionCleared;
   
   const WasmWorldView({
     super.key,
     required this.worldSeed,
     this.onReady,
-    this.onCitySelected,
-    this.onSelectionCleared,
   });
   
   @override
@@ -109,18 +105,6 @@ class _WasmWorldViewState extends State<WasmWorldView> {
     );
   }
   
-  void _handleTap(TapUpDetails details) {
-    final city = _controller?.click(
-      details.localPosition.dx,
-      details.localPosition.dy,
-    );
-    
-    if (city != null) {
-      widget.onCitySelected?.call(city);
-    } else {
-      widget.onSelectionCleared?.call();
-    }
-  }
   
   @override
   Widget build(BuildContext context) {
@@ -141,7 +125,6 @@ class _WasmWorldViewState extends State<WasmWorldView> {
       },
       child: GestureDetector(
         onPanUpdate: _handlePan,
-        onTapUp: _handleTap,
         child: const HtmlElementView(viewType: _viewType),
       ),
     );

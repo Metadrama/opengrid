@@ -85,14 +85,12 @@ impl WorldRenderer {
     #[wasm_bindgen]
     pub fn pan(&mut self, dx: f64, dy: f64) {
         self.camera.pan(dx, dy);
-        self.clear_selection();
     }
     
     /// Zoom at cursor position
     #[wasm_bindgen]
     pub fn zoom_at(&mut self, cursor_x: f64, cursor_y: f64, delta: f64) {
         self.camera.zoom_at(cursor_x, cursor_y, delta);
-        self.clear_selection();
     }
     
     /// Set camera position directly
@@ -102,53 +100,7 @@ impl WorldRenderer {
         self.camera.y = y;
         self.camera.zoom = zoom.clamp(Camera::MIN_ZOOM, Camera::MAX_ZOOM);
     }
-    
-    /// Handle click - returns CityInfo if hit, null otherwise
-    #[wasm_bindgen]
-    pub fn click(&mut self, screen_x: f64, screen_y: f64) -> Option<CityInfo> {
-        let (world_x, world_y) = self.camera.screen_to_world(screen_x, screen_y);
-        
-        // Check all cached chunks for city hits
-        let visible = self.get_visible_coords();
-        
-        for coord in visible {
-            let chunk = self.chunks.get_or_generate(coord);
-            
-            for city in &chunk.cities {
-                let city_world_x = city.world_x(&coord);
-                let city_world_y = city.world_y(&coord);
-                
-                // Hit test (15 pixel radius in screen space)
-                let (city_screen_x, city_screen_y) = self.camera.world_to_screen(city_world_x, city_world_y);
-                let dx = screen_x - city_screen_x;
-                let dy = screen_y - city_screen_y;
-                let dist = (dx * dx + dy * dy).sqrt();
-                
-                if dist < 15.0 {
-                    self.selected_city = Some((coord, city.grid_x, city.grid_y));
-                    
-                    return Some(CityInfo {
-                        chunk_x: coord.x,
-                        chunk_y: coord.y,
-                        grid_x: city.grid_x,
-                        grid_y: city.grid_y,
-                        seed: city.seed,
-                        screen_x: city_screen_x,
-                        screen_y: city_screen_y,
-                    });
-                }
-            }
-        }
-        
-        // No hit - clear selection
-        self.clear_selection();
-        None
-    }
-    
-    fn clear_selection(&mut self) {
-        self.selected_city = None;
-    }
-    
+
     /// Get render stats for debug overlay
     #[wasm_bindgen]
     pub fn get_stats(&self) -> RenderStats {
@@ -161,7 +113,7 @@ impl WorldRenderer {
             camera_y: self.camera.y,
         }
     }
-    
+
     /// Render a single frame
     #[wasm_bindgen]
     pub fn render(&mut self) {
@@ -182,28 +134,14 @@ impl WorldRenderer {
         // Draw grid lines
         self.draw_grid();
         
-        // Load visible chunks and collect city data first
+        // Update stats
         let visible = self.get_visible_coords();
         self.last_visible_chunks = visible.len() as u32;
         
-        // Collect all cities to draw (avoids borrow conflict)
-        let mut cities_to_draw: Vec<(ChunkCoord, f64, f64, i32, i32, u32)> = Vec::new();
         let mut total_cities = 0u32;
-        
         for coord in &visible {
             let chunk = self.chunks.get_or_generate(*coord);
             total_cities += chunk.cities.len() as u32;
-            
-            for city in &chunk.cities {
-                let world_x = city.world_x(&coord);
-                let world_y = city.world_y(&coord);
-                cities_to_draw.push((*coord, world_x, world_y, city.grid_x, city.grid_y, city.seed));
-            }
-        }
-        
-        // Now draw all cities (no borrow conflict)
-        for (coord, world_x, world_y, grid_x, grid_y, _seed) in cities_to_draw {
-            self.draw_city_at(coord, world_x, world_y, grid_x, grid_y);
         }
         
         self.last_total_cities = total_cities;
@@ -254,47 +192,7 @@ impl WorldRenderer {
         ctx.stroke();
     }
     
-    fn draw_city_at(&self, chunk_coord: ChunkCoord, world_x: f64, world_y: f64, grid_x: i32, grid_y: i32) {
-        let ctx = &self.ctx;
-        
-        let (screen_x, screen_y) = self.camera.world_to_screen(world_x, world_y);
-        
-        // Skip if off screen
-        if screen_x < -20.0 || screen_x > self.camera.width + 20.0 ||
-           screen_y < -20.0 || screen_y > self.camera.height + 20.0 {
-            return;
-        }
-        
-        // Check if selected
-        let is_selected = self.selected_city.map_or(false, |(c, gx, gy)| {
-            c == chunk_coord && gx == grid_x && gy == grid_y
-        });
-        
-        if is_selected {
-            // Selected: yellow glow
-            ctx.set_fill_style_str("rgba(255, 255, 0, 0.5)");
-            ctx.begin_path();
-            ctx.arc(screen_x, screen_y, 10.0, 0.0, std::f64::consts::TAU).unwrap();
-            ctx.fill();
-            
-            ctx.set_fill_style_str("#FFFF00");
-            ctx.begin_path();
-            ctx.arc(screen_x, screen_y, 4.0, 0.0, std::f64::consts::TAU).unwrap();
-            ctx.fill();
-        } else {
-            // Normal: green glow
-            ctx.set_fill_style_str("rgba(0, 255, 136, 0.3)");
-            ctx.begin_path();
-            ctx.arc(screen_x, screen_y, 6.0, 0.0, std::f64::consts::TAU).unwrap();
-            ctx.fill();
-            
-            ctx.set_fill_style_str("#00FF88");
-            ctx.begin_path();
-            ctx.arc(screen_x, screen_y, 3.0, 0.0, std::f64::consts::TAU).unwrap();
-            ctx.fill();
-        }
-    }
-    
+
     /// Start render loop
     #[wasm_bindgen]
     pub fn start(&mut self) {

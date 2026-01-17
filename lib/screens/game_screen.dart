@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:opengrid_renderer/widgets/wasm_world_view.dart';
-import 'package:opengrid_world/widgets/city_tooltip.dart';
 import 'package:opengrid_renderer/widgets/debug_overlay.dart';
 import 'package:opengrid_world/bridge/wasm_bridge.dart';
 import 'package:opengrid_renderer/controller/wasm_world_controller.dart';
@@ -15,7 +14,6 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   WasmWorldController? _controller;
-  CityInfo? _selectedCity;
 
   @override
   Widget build(BuildContext context) {
@@ -30,22 +28,8 @@ class _GameScreenState extends State<GameScreen> {
               onReady: (controller) {
                 setState(() => _controller = controller);
               },
-              onCitySelected: (city) {
-                setState(() => _selectedCity = city);
-              },
-              onSelectionCleared: () {
-                setState(() => _selectedCity = null);
-              },
             ),
           ),
-
-          // City tooltip (Flutter overlay)
-          if (_selectedCity != null)
-            Positioned(
-              left: _selectedCity!.screenX + 15,
-              top: _selectedCity!.screenY - 80,
-              child: CityTooltip(city: _selectedCity!),
-            ),
 
           // Debug HUD (Flutter overlay)
           Positioned(
