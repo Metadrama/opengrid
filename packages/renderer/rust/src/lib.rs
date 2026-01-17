@@ -31,20 +31,26 @@ pub struct RenderStats {
 }
 
 #[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub struct Salesman {
+    pub id: u32,
+    pub x: f64,
+    pub y: f64,
+    pub color: u32, // 0xRRGGBB
+}
+
+#[wasm_bindgen]
 pub struct WorldRenderer {
     canvas: HtmlCanvasElement,
     ctx: CanvasRenderingContext2d,
     camera: Camera,
     chunks: ChunkCache,
+    salesmen: Vec<Salesman>,
     
-    // Selection state
-    selected_city: Option<(ChunkCoord, i32, i32)>, // (chunk, gridX, gridY)
-    
-    // Animation
+    // Animation state
     running: bool,
-    animation_id: Option<i32>,
     
-    // Stats
+    // Stats state
     last_visible_chunks: u32,
     last_total_cities: u32,
 }
@@ -54,17 +60,14 @@ impl WorldRenderer {
     /// Create new renderer attached to a canvas
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement, world_seed: u32) -> Result<WorldRenderer, JsValue> {
-        // Get 2D context
         let ctx = canvas
             .get_context("2d")?
             .ok_or("Failed to get 2d context")?
             .dyn_into::<CanvasRenderingContext2d>()?;
         
-        // Get canvas size
         let width = canvas.client_width() as f64;
         let height = canvas.client_height() as f64;
         
-        // Set actual pixel size
         canvas.set_width(width as u32);
         canvas.set_height(height as u32);
         
@@ -73,14 +76,30 @@ impl WorldRenderer {
             ctx,
             camera: Camera::new(width, height),
             chunks: ChunkCache::new(world_seed),
-            selected_city: None,
+            salesmen: Vec::new(),
             running: false,
-            animation_id: None,
             last_visible_chunks: 0,
             last_total_cities: 0,
         })
     }
     
+    /// Update salesmen positions
+    #[wasm_bindgen]
+    pub fn update_salesmen(&mut self, data: Vec<f64>) {
+        // Expected format: [id, x, y, color, id, x, y, color, ...]
+        self.salesmen.clear();
+        for chunk in data.chunks(4) {
+            if chunk.len() == 4 {
+                self.salesmen.push(Salesman {
+                    id: chunk[0] as u32,
+                    x: chunk[1],
+                    y: chunk[2],
+                    color: chunk[3] as u32,
+                });
+            }
+        }
+    }
+
     /// Pan camera by screen delta
     #[wasm_bindgen]
     pub fn pan(&mut self, dx: f64, dy: f64) {
@@ -101,22 +120,9 @@ impl WorldRenderer {
         self.camera.zoom = zoom.clamp(Camera::MIN_ZOOM, Camera::MAX_ZOOM);
     }
 
-    /// Get render stats for debug overlay
+    /// Render a single frame and return stats
     #[wasm_bindgen]
-    pub fn get_stats(&self) -> RenderStats {
-        RenderStats {
-            visible_chunks: self.last_visible_chunks,
-            cached_chunks: self.chunks.cached_count() as u32,
-            total_cities: self.last_total_cities,
-            zoom: self.camera.zoom,
-            camera_x: self.camera.x,
-            camera_y: self.camera.y,
-        }
-    }
-
-    /// Render a single frame
-    #[wasm_bindgen]
-    pub fn render(&mut self) {
+    pub fn render(&mut self) -> RenderStats {
         // Update canvas size if needed
         let width = self.canvas.client_width() as f64;
         let height = self.canvas.client_height() as f64;
@@ -134,7 +140,10 @@ impl WorldRenderer {
         // Draw grid lines
         self.draw_grid();
         
-        // Update stats
+        // Draw Salesmen
+        self.draw_salesmen();
+        
+        // Update stats and chunks
         let visible = self.get_visible_coords();
         self.last_visible_chunks = visible.len() as u32;
         
@@ -146,7 +155,36 @@ impl WorldRenderer {
         
         self.last_total_cities = total_cities;
         self.chunks.advance_frame();
+
+        RenderStats {
+            visible_chunks: self.last_visible_chunks,
+            cached_chunks: self.chunks.cached_count() as u32,
+            total_cities: self.last_total_cities,
+            zoom: self.camera.zoom,
+            camera_x: self.camera.x,
+            camera_y: self.camera.y,
+        }
     }
+
+    fn draw_salesmen(&self) {
+        let ctx = &self.ctx;
+        for salesman in &self.salesmen {
+             let (screen_x, screen_y) = self.camera.world_to_screen(salesman.x, salesman.y);
+             
+             // Draw Body
+             let color = format!("#{:06x}", salesman.color);
+             ctx.set_fill_style_str(&color);
+             ctx.begin_path();
+             ctx.arc(screen_x, screen_y, 8.0, 0.0, std::f64::consts::TAU).unwrap();
+             ctx.fill();
+             
+             // Draw Glow
+             ctx.set_stroke_style_str("white");
+             ctx.set_line_width(2.0);
+             ctx.stroke();
+        }
+    }
+
     
     fn get_visible_coords(&self) -> Vec<ChunkCoord> {
         self.chunks.get_visible_chunks(

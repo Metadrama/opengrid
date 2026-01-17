@@ -9,11 +9,13 @@ import '../controller/wasm_world_controller.dart';
 class WasmWorldView extends StatefulWidget {
   final int worldSeed;
   final void Function(WasmWorldController)? onReady;
+  final void Function(RenderStats)? onStats;
   
   const WasmWorldView({
     super.key,
     required this.worldSeed,
     this.onReady,
+    this.onStats,
   });
   
   @override
@@ -77,7 +79,9 @@ class _WasmWorldViewState extends State<WasmWorldView> {
     void loop(num timestamp) {
       if (!mounted || _controller == null) return;
       
-      _controller!.render();
+      final stats = _controller!.render();
+      widget.onStats?.call(stats);
+      
       _animationFrameId = html.window.requestAnimationFrame(loop);
     }
     

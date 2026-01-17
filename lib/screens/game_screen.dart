@@ -14,6 +14,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   WasmWorldController? _controller;
+  RenderStats? _stats;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +29,9 @@ class _GameScreenState extends State<GameScreen> {
               onReady: (controller) {
                 setState(() => _controller = controller);
               },
+              onStats: (stats) {
+                setState(() => _stats = stats);
+              },
             ),
           ),
 
@@ -35,7 +39,7 @@ class _GameScreenState extends State<GameScreen> {
           Positioned(
             top: 8,
             left: 8,
-            child: DebugOverlay(controller: _controller),
+            child: DebugOverlay(stats: _stats),
           ),
 
           // Title

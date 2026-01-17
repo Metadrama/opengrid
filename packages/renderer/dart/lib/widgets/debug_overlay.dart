@@ -3,45 +3,14 @@ import 'package:opengrid_world/bridge/wasm_bridge.dart';
 import 'package:opengrid_renderer/controller/wasm_world_controller.dart';
 
 /// Debug overlay showing render stats
-class DebugOverlay extends StatefulWidget {
-  final WasmWorldController? controller;
+class DebugOverlay extends StatelessWidget {
+  final RenderStats? stats;
   
-  const DebugOverlay({super.key, this.controller});
-  
-  @override
-  State<DebugOverlay> createState() => _DebugOverlayState();
-}
-
-class _DebugOverlayState extends State<DebugOverlay> {
-  RenderStats? _stats;
-  
-  @override
-  void initState() {
-    super.initState();
-    _startPolling();
-  }
-  
-  void _startPolling() {
-    Future.doWhile(() async {
-      if (!mounted) return false;
-      
-      if (widget.controller != null) {
-        try {
-          final stats = widget.controller!.getStats();
-          if (mounted) {
-            setState(() => _stats = stats);
-          }
-        } catch (_) {}
-      }
-      
-      await Future.delayed(const Duration(milliseconds: 100));
-      return mounted;
-    });
-  }
+  const DebugOverlay({super.key, this.stats});
   
   @override
   Widget build(BuildContext context) {
-    final stats = _stats;
+    final stats = this.stats;
     
     return Container(
       padding: const EdgeInsets.all(8),

@@ -64,15 +64,10 @@ class WasmWorldController {
     js_util.callMethod(_renderer, 'set_camera', [x, y, zoom]);
   }
   
-  /// Get render stats
-  RenderStats getStats() {
-    final result = js_util.callMethod(_renderer, 'get_stats', []);
+  /// Render a single frame and return stats
+  RenderStats render() {
+    final result = js_util.callMethod(_renderer, 'render', []);
     return RenderStats.fromJs(result);
-  }
-  
-  /// Render a single frame
-  void render() {
-    js_util.callMethod(_renderer, 'render', []);
   }
   
   /// Start render loop
