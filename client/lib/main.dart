@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'widgets/grid_viewport.dart';
+import 'screens/game_screen.dart';
 
 void main() {
   runApp(const OpenGridApp());
@@ -16,9 +16,7 @@ class OpenGridApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0D0D0D),
       ),
-      home: const Scaffold(
-        body: GridViewport(),
-      ),
+      home: const GameScreen(),
     );
   }
 }
