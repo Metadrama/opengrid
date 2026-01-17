@@ -1,0 +1,13 @@
+name: opengrid_renderer
+description: Renderer widgets and controllers for OpenGrid.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  opengrid_world:
+    path: ../../world/dart

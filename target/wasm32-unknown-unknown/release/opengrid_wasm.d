@@ -1,0 +1,1 @@
+C:\Users\mino\opengrid\target\wasm32-unknown-unknown\release\opengrid_wasm.wasm: C:\Users\mino\opengrid\packages\core\rust\src\lib.rs C:\Users\mino\opengrid\packages\renderer\rust\src\lib.rs C:\Users\mino\opengrid\packages\world\rust\src\chunk.rs C:\Users\mino\opengrid\packages\world\rust\src\lib.rs C:\Users\mino\opengrid\wasm_assembler\src\lib.rs

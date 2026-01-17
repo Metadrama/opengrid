@@ -1,0 +1,13 @@
+[package]
+name = "opengrid-wasm"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+opengrid-renderer = { path = "../packages/renderer/rust" }
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = ["console"] }

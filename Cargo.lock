@@ -60,40 +60,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
+name = "opengrid-core"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "opengrid-renderer"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "opengrid-core",
+ "opengrid-world",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "opengrid-wasm"
 version = "0.2.0"
 dependencies = [
  "console_error_panic_hook",
- "opengrid_core",
- "opengrid_renderer",
- "opengrid_world",
+ "opengrid-renderer",
  "wasm-bindgen",
  "web-sys",
 ]
 
 [[package]]
-name = "opengrid_core"
-version = "0.1.0"
-
-[[package]]
-name = "opengrid_renderer"
-version = "0.1.0"
-dependencies = [
- "js-sys",
- "opengrid_core",
- "opengrid_world",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "opengrid_world"
+name = "opengrid-world"
 version = "0.1.0"
 dependencies = [
  "getrandom",
- "opengrid_core",
  "rand",
  "rand_pcg",
+ "wasm-bindgen",
 ]
 
 [[package]]

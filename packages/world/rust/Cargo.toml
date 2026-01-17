@@ -1,0 +1,11 @@
+[package]
+name = "opengrid-world"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# core? Not needed yet if chunk.rs is self contained
+rand = { version = "0.8", features = ["small_rng"] }
+rand_pcg = "0.3"
+wasm-bindgen = "0.2"
+getrandom = { version = "0.2", features = ["js"] }

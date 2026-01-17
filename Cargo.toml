@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+
+    "packages/world/rust",
+    "packages/renderer/rust",
+    "wasm_assembler",
+]
+
+[profile.release]
+opt-level = "s"
+lto = true
