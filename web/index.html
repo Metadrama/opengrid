@@ -66,8 +66,8 @@
 
   <!-- WASM Module Loader -->
   <script type="module">
-    // Import WASM module
-    import wasmInit, { WorldRenderer, version } from './assets/opengrid_wasm.js';
+    // Import WASM module from pkg directory (built by wasm-pack)
+    import wasmInit, { WorldRenderer } from './pkg/opengrid_renderer.js';
 
     // Store initialized state
     window.wasmReady = false;
@@ -81,9 +81,8 @@
       try {
         await wasmInit();
         window.WorldRenderer = WorldRenderer;
-        window.wasmVersion = version;
         window.wasmReady = true;
-        console.log('OpenGrid WASM initialized, version:', version());
+        console.log('OpenGrid WASM initialized');
         return true;
       } catch (e) {
         window.wasmError = e;

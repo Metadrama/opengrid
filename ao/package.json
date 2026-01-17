@@ -1,0 +1,13 @@
+{
+    "name": "opengrid-ao",
+    "version": "0.1.0",
+    "type": "module",
+    "description": "AO backend for OpenGrid autonomous salesmen",
+    "scripts": {
+        "deploy": "node deploy.mjs",
+        "test": "node test.mjs"
+    },
+    "dependencies": {
+        "wao": "^0.1.0"
+    }
+}

@@ -33,13 +33,40 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node/JavaScript related
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+
 # Symbolication related
 app.*.symbols
 
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio build artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Rust build artifacts
+/**/target/
+
+# Other build/dist directories
+/dist/
+/out/
+*.exe
+*.dll
+*.so
+*.wasm
+/wasm_assembler/dist/
+
+# Application Specific
+/assets/
+/lib/services/
+**/*.1.dart
+**/*.1.rs
+**/*.1.lua

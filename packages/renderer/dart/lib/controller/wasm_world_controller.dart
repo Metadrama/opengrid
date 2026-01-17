@@ -70,6 +70,12 @@ class WasmWorldController {
     return RenderStats.fromJs(result);
   }
   
+  /// Update salesman paths for smooth animation
+  /// Data format: [id, color, speed, numWaypoints, x1, y1, t1, x2, y2, t2, ...]
+  void updateSalesmanPaths(List<double> data) {
+    js_util.callMethod(_renderer, 'update_salesman_paths', [data]);
+  }
+  
   /// Start render loop
   void start() {
     js_util.callMethod(_renderer, 'start', []);

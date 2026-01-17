@@ -28,15 +28,60 @@ pub struct RenderStats {
     pub zoom: f64,
     pub camera_x: f64,
     pub camera_y: f64,
+    pub salesman_count: u32,
 }
 
-#[wasm_bindgen]
-#[derive(Clone, Copy)]
-pub struct Salesman {
-    pub id: u32,
-    pub x: f64,
-    pub y: f64,
-    pub color: u32, // 0xRRGGBB
+/// A waypoint in the salesman's path
+#[derive(Clone)]
+struct Waypoint {
+    x: f64,
+    y: f64,
+    arrival_time: f64,
+}
+
+/// Salesman path for smooth animation
+#[derive(Clone)]
+struct SalesmanPath {
+    id: u32,
+    color: u32,
+    speed: f64,
+    waypoints: Vec<Waypoint>,
+}
+
+impl SalesmanPath {
+    /// Get interpolated position based on elapsed time
+    fn get_position(&self, elapsed: f64) -> (f64, f64, bool) {
+        if self.waypoints.is_empty() {
+            return (0.0, 0.0, true);
+        }
+        
+        if self.waypoints.len() == 1 {
+            return (self.waypoints[0].x, self.waypoints[0].y, true);
+        }
+        
+        // Find the segment we're currently on
+        for i in 0..(self.waypoints.len() - 1) {
+            let current = &self.waypoints[i];
+            let next = &self.waypoints[i + 1];
+            
+            if elapsed >= current.arrival_time && elapsed < next.arrival_time {
+                // Interpolate between current and next
+                let segment_duration = next.arrival_time - current.arrival_time;
+                if segment_duration <= 0.0 {
+                    return (next.x, next.y, false);
+                }
+                
+                let t = (elapsed - current.arrival_time) / segment_duration;
+                let x = current.x + (next.x - current.x) * t;
+                let y = current.y + (next.y - current.y) * t;
+                return (x, y, false);
+            }
+        }
+        
+        // Past the end - return final position
+        let last = &self.waypoints[self.waypoints.len() - 1];
+        (last.x, last.y, true)
+    }
 }
 
 #[wasm_bindgen]
@@ -45,7 +90,10 @@ pub struct WorldRenderer {
     ctx: CanvasRenderingContext2d,
     camera: Camera,
     chunks: ChunkCache,
-    salesmen: Vec<Salesman>,
+    
+    // Path-based salesman animation
+    salesman_paths: Vec<SalesmanPath>,
+    animation_start_time: f64,
     
     // Animation state
     running: bool,
@@ -53,6 +101,10 @@ pub struct WorldRenderer {
     // Stats state
     last_visible_chunks: u32,
     last_total_cities: u32,
+}
+
+fn get_time_seconds() -> f64 {
+    js_sys::Date::now() / 1000.0
 }
 
 #[wasm_bindgen]
@@ -76,28 +128,55 @@ impl WorldRenderer {
             ctx,
             camera: Camera::new(width, height),
             chunks: ChunkCache::new(world_seed),
-            salesmen: Vec::new(),
+            salesman_paths: Vec::new(),
+            animation_start_time: get_time_seconds(),
             running: false,
             last_visible_chunks: 0,
             last_total_cities: 0,
         })
     }
     
-    /// Update salesmen positions
+    /// Update salesman paths from AO
+    /// Data format: [id, color, speed, numWaypoints, x1, y1, t1, x2, y2, t2, ..., (next salesman)]
     #[wasm_bindgen]
-    pub fn update_salesmen(&mut self, data: Vec<f64>) {
-        // Expected format: [id, x, y, color, id, x, y, color, ...]
-        self.salesmen.clear();
-        for chunk in data.chunks(4) {
-            if chunk.len() == 4 {
-                self.salesmen.push(Salesman {
-                    id: chunk[0] as u32,
-                    x: chunk[1],
-                    y: chunk[2],
-                    color: chunk[3] as u32,
+    pub fn update_salesman_paths(&mut self, data: Vec<f64>) {
+        self.salesman_paths.clear();
+        self.animation_start_time = get_time_seconds();
+        
+        let mut i = 0;
+        while i + 3 < data.len() {
+            let id = data[i] as u32;
+            let color = data[i + 1] as u32;
+            let speed = data[i + 2];
+            let num_waypoints = data[i + 3] as usize;
+            i += 4;
+            
+            let mut waypoints = Vec::with_capacity(num_waypoints);
+            for _ in 0..num_waypoints {
+                if i + 2 < data.len() {
+                    waypoints.push(Waypoint {
+                        x: data[i],
+                        y: data[i + 1],
+                        arrival_time: data[i + 2],
+                    });
+                    i += 3;
+                }
+            }
+            
+            if !waypoints.is_empty() {
+                self.salesman_paths.push(SalesmanPath {
+                    id,
+                    color,
+                    speed,
+                    waypoints,
                 });
             }
         }
+        
+        web_sys::console::log_1(&format!(
+            "Updated {} salesman paths", 
+            self.salesman_paths.len()
+        ).into());
     }
 
     /// Pan camera by screen delta
@@ -140,7 +219,10 @@ impl WorldRenderer {
         // Draw grid lines
         self.draw_grid();
         
-        // Draw Salesmen
+        // Draw salesman paths (trails)
+        self.draw_salesman_trails();
+        
+        // Draw salesmen (animated positions)
         self.draw_salesmen();
         
         // Update stats and chunks
@@ -163,25 +245,84 @@ impl WorldRenderer {
             zoom: self.camera.zoom,
             camera_x: self.camera.x,
             camera_y: self.camera.y,
+            salesman_count: self.salesman_paths.len() as u32,
+        }
+    }
+
+    fn draw_salesman_trails(&self) {
+        let ctx = &self.ctx;
+        
+        for path in &self.salesman_paths {
+            if path.waypoints.len() < 2 {
+                continue;
+            }
+            
+            // Draw path trail
+            let r = (path.color >> 16) & 0xFF;
+            let g = (path.color >> 8) & 0xFF;
+            let b = path.color & 0xFF;
+            
+            ctx.set_stroke_style_str(&format!("rgba({}, {}, {}, 0.3)", r, g, b));
+            ctx.set_line_width(2.0);
+            ctx.begin_path();
+            
+            let (sx, sy) = self.camera.world_to_screen(
+                path.waypoints[0].x, 
+                path.waypoints[0].y
+            );
+            ctx.move_to(sx, sy);
+            
+            for wp in path.waypoints.iter().skip(1) {
+                let (wx, wy) = self.camera.world_to_screen(wp.x, wp.y);
+                ctx.line_to(wx, wy);
+            }
+            
+            ctx.stroke();
+            
+            // Draw waypoint dots
+            ctx.set_fill_style_str(&format!("rgba({}, {}, {}, 0.5)", r, g, b));
+            for wp in &path.waypoints {
+                let (wx, wy) = self.camera.world_to_screen(wp.x, wp.y);
+                ctx.begin_path();
+                ctx.arc(wx, wy, 3.0, 0.0, std::f64::consts::TAU).ok();
+                ctx.fill();
+            }
         }
     }
 
     fn draw_salesmen(&self) {
         let ctx = &self.ctx;
-        for salesman in &self.salesmen {
-             let (screen_x, screen_y) = self.camera.world_to_screen(salesman.x, salesman.y);
-             
-             // Draw Body
-             let color = format!("#{:06x}", salesman.color);
-             ctx.set_fill_style_str(&color);
-             ctx.begin_path();
-             ctx.arc(screen_x, screen_y, 8.0, 0.0, std::f64::consts::TAU).unwrap();
-             ctx.fill();
-             
-             // Draw Glow
-             ctx.set_stroke_style_str("white");
-             ctx.set_line_width(2.0);
-             ctx.stroke();
+        let elapsed = get_time_seconds() - self.animation_start_time;
+        
+        for path in &self.salesman_paths {
+            let (world_x, world_y, _complete) = path.get_position(elapsed);
+            let (screen_x, screen_y) = self.camera.world_to_screen(world_x, world_y);
+            
+            // Extract RGB
+            let r = (path.color >> 16) & 0xFF;
+            let g = (path.color >> 8) & 0xFF;
+            let b = path.color & 0xFF;
+            
+            // Draw glow
+            ctx.set_shadow_color(&format!("rgb({}, {}, {})", r, g, b));
+            ctx.set_shadow_blur(15.0);
+            
+            // Draw body
+            ctx.set_fill_style_str(&format!("#{:06x}", path.color));
+            ctx.begin_path();
+            ctx.arc(screen_x, screen_y, 8.0, 0.0, std::f64::consts::TAU).ok();
+            ctx.fill();
+            
+            // Draw border
+            ctx.set_shadow_blur(0.0);
+            ctx.set_stroke_style_str("white");
+            ctx.set_line_width(2.0);
+            ctx.stroke();
+            
+            // Draw ID label
+            ctx.set_fill_style_str("white");
+            ctx.set_font("10px monospace");
+            ctx.fill_text(&format!("{}", path.id), screen_x + 12.0, screen_y + 4.0).ok();
         }
     }
 
